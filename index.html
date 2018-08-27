@@ -1,0 +1,75 @@
+<html>
+<head>
+    <title>test Ws mqtt.js</title>
+    <style>
+        #results {
+            font-family: "Trebuchet MS", Arial, Helvetica, sans-serif;
+            border-collapse: collapse;
+            width: 100%;
+        }
+
+        #results td, #results th {
+            border: 1px solid #ddd;
+            padding: 8px;
+        }
+
+        #results tr:nth-child(even){background-color: #f2f2f2;}
+
+        #results tr:hover {background-color: #ddd;}
+
+        #results th {
+            padding-top: 12px;
+            padding-bottom: 12px;
+            text-align: left;
+            background-color: #4CAF50;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+状态：<span id="status">未连接</span>
+<table id="results">
+    <th>时间</th>
+    <th>结果</th>
+    <th>图片</th>
+    <tbody>
+    </tbody>
+</table>
+<script src="https://code.jquery.com/jquery-3.3.1.min.js"
+        integrity="sha256-FgpCb/KJQlLNfOu91ta32o/NMZxltwRo8QtmkMRdAu8="
+        crossorigin="anonymous"></script>
+<script src="https://unpkg.com/mqtt@2.18.6/dist/mqtt.min.js"></script>
+<script>
+    var client = mqtt.connect("ws://iot.eclipse.org/ws") // you add a ws:// url here
+    client.on('connect', function (connack) {
+        if(connack.returnCode == 0) {
+            $('#status').text("已连接")
+            console.log("subscribing")
+            client.subscribe("front_door/detection/objects", {
+                qos: 1
+            }, function (err) {
+                if (err != undefined) {
+                    console.log("subscribe failed")
+                } else {
+                    console.log(`subscribe succeeded`)
+                }
+            })
+        }else {
+            console.log(`Connection failed: ${connack.returnCode}`)
+        }
+    })
+    client.on('offline', function () {
+        $('#status').text("未连接")
+    })
+    var receivedMessages = new Set();
+    client.on("message", function (_, payload) {
+        var jsonMessage = JSON.parse(payload.toString())
+        if(!receivedMessages.has(jsonMessage.id)){
+            receivedMessages.add(jsonMessage.id)
+            var date = new Date(jsonMessage.timestamp * 1000)
+            $('#results tr:last').after(`<tr><td>${date.toLocaleString()}</td><td>${jsonMessage.objects}</td><td><img src="${jsonMessage.image_url}" height="200"></td></tr>`);
+        }
+    })
+</script>
+</body>
+</html>
